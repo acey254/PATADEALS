@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pata Deals Hub</title>
+<style>
+:root{--bg:#fbf7f0;--card:#fff;--tx:#111;--mu:#5f5a52;--ac:#bb0000;--ac2:#fff;--gr:#006600;--bd:#e6dfd2;--warn:#b45309;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0d0d0d;--card:#1a1a1a;--tx:#f4f1ea;--mu:#a8a39a;--ac:#d62828;--ac2:#fff;--gr:#2fb457;--bd:#333;--warn:#f0a94a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.flag{height:14px;background:linear-gradient(#000 0 28%,#fff 28% 33%,#bb0000 33% 67%,#fff 67% 72%,#006600 72%)}header{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#000;color:#fff}header svg{flex:none}h1{margin:0;font-size:22px;color:#fff}h1 span{color:#ff4d4d}
+.sub{color:#d8d4cc;font-size:13px;margin:2px 0 0}
+nav{display:flex;gap:6px;padding:8px 16px;overflow-x:auto}
+nav button,.chip{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:99px;font-size:14px;white-space:nowrap;cursor:pointer}
+nav button.on,.chip.on{background:var(--ac);color:var(--ac2);border-color:var(--ac)}
+main{padding:8px 16px 40px;max-width:720px;margin:auto}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit;margin-top:4px}
+label{display:block;margin-top:12px;font-size:14px;color:var(--mu)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--ac);border-radius:14px;overflow:hidden;cursor:pointer}
+.img{height:90px;display:grid;place-items:center;font-size:44px;background:var(--bd)}
+.cb{padding:10px}.t{font-weight:600;font-size:14px}.p{color:var(--gr);font-weight:700;margin-top:2px}
+.m{color:var(--mu);font-size:12px;margin-top:2px}
+.btn{display:block;width:100%;text-align:center;border:0;background:var(--ac);color:var(--ac2);padding:13px;border-radius:12px;font:600 16px inherit;margin-top:14px;cursor:pointer;text-decoration:none}
+.btn.alt{background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+.box{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-top:12px}
+.fee{font-size:20px;font-weight:700;color:var(--warn)}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mu);margin-right:4px}
+.tag.ok{color:var(--gr);border-color:var(--gr)}
+.tip{font-size:13px;color:var(--mu);margin-top:10px}
+.empty{text-align:center;color:var(--mu);padding:30px 0}
+.stat{font-size:28px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="flag"></div><header><svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><ellipse cx="17" cy="22" rx="14" ry="20" fill="#bb0000" stroke="#fff" stroke-width="2"/><ellipse cx="17" cy="22" rx="5" ry="12" fill="#000" stroke="#fff" stroke-width="1.5"/><path d="M17 -2v48" stroke="#fff" stroke-width="2"/></svg><div><h1>Pata Deals <span>Hub</span></h1><p class="sub">Bei poa, mali safi.</p></div></header>
+<nav id="nav"></nav>
+<main id="app"></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// 1) PASTE YOUR TWO SUPABASE VALUES HERE (Project Settings > API)
+const SUPABASE_URL="https://wvvymlaqirwlyompwbpg.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dnltbGFxaXJ3bHlvbXB3YnBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNTQ0MTUsImV4cCI6MjEwNzYzMDQxNX0.q50KHd3doDPyURt9E-RU6JSXCrTCqh27mVjR4O1FO5k";
+
+const CATS={Electronics:500,Phones:500,Fashion:200,Furniture:300,Vehicles:1000,Books:100,Other:150};
+const EMO={Electronics:"💻",Phones:"📱",Fashion:"👗",Furniture:"🛋️",Vehicles:"🚗",Books:"📚",Other:"📦"};
+const NEEDID=["Phones","Electronics","Vehicles"];
+const LABEL={requested:"Requested",sold:"Sold, waiting for buyer to confirm",received:"Completed"};
+let sb,U=null,P=null,tab="browse",view=null,mode="in",who="buyer",cat="All",q="",L=[],ST={},BS={},SP={lat:null,lng:null},ADM="reports",SPL=[],SQ="";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kes=n=>"KES "+Number(n).toLocaleString();
+const stars=(a,n)=>n?`⭐ ${a} (${n} ratings)`:"New seller";
+
+async function init(){
+  if(SUPABASE_URL.startsWith("PASTE")){$("app").innerHTML='<div class="box">Open index.html and paste your Supabase URL and key at the top.</div>';return;}
+  sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  const {data}=await sb.auth.getSession();await setUser(data.session?.user);
+}
+async function setUser(u){U=u||null;P=null;tab="browse";view=null;
+  if(U){const {data}=await sb.from("profiles").select("*").eq("id",U.id).single();P=data;}
+  render();}
+function nav(){
+  if(!U){$("nav").innerHTML="";return;}
+  const T=[["browse","Browse"]];
+  if(P?.role==="seller")T.push(["post","Post ad"],["sales","My Sales"]);else T.push(["items","My Items"]);
+  T.push(["spot","My spot"],["spots","Safe spots"],["check","Check item"]);if(P?.is_admin)T.push(["admin","Admin"]);
+  $("nav").innerHTML=T.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="tab='${t[0]}';view=null;render()">${t[1]}</button>`).join("")+`<button onclick="logout()">Log out</button>`;}
+async function render(){
+  nav();const a=$("app");
+  if(!U){a.innerHTML=authView();return;}
+  if(!P){a.innerHTML='<div class="empty">Loading your account…</div>';return;}
+  if(P.suspended){a.innerHTML='<div class="box"><b>Your account is suspended.</b><div class="tip">Please contact support to appeal.</div></div>';return;}
+  a.innerHTML='<div class="empty">Loading…</div>';
+  a.innerHTML=view?await itemView(view):await ({browse,post,sales,items,spot,spots,check,admin}[tab])();}
+
+/* ---------- sign in / sign up ---------- */
+function authView(){return `<h2>${mode==="in"?"Sign in":"Create your account"}</h2>`+
+ (mode==="up"?`<div class="chips"><button class="chip ${who==="buyer"?"on":""}" onclick="who='buyer';render()">I want to buy</button><button class="chip ${who==="seller"?"on":""}" onclick="who='seller';render()">I want to sell</button></div><label>Full name<input id="a_name"></label><label>Phone (254…)<input id="a_phone" type="tel"></label>`:"")+
+ `<label>Email<input id="a_email" type="email"></label><label>Password (6+ characters)<input id="a_pass" type="password"></label>
+ <button class="btn" onclick="auth()">${mode==="in"?"Sign in":"Sign up"}</button>
+ <button class="btn alt" onclick="mode='${mode==="in"?"up":"in"}';render()">${mode==="in"?"New here? Create account":"Have an account? Sign in"}</button>`;}
+async function auth(){
+  const email=$("a_email").value.trim(),password=$("a_pass").value;let r;
+  if(mode==="up"){const name=$("a_name").value.trim(),phone=$("a_phone").value.trim();
+    if(!name||!/^254\d{9}$/.test(phone)){alert("Enter your name and a phone like 254712345678.");return;}
+    const f=await sb.functions.invoke("bright-service",{body:{email,password,name,phone,role:who}});
+    if(f.error){let m="Sign up failed. Please try again.";try{m=(await f.error.context.json()).error||m}catch(_){}alert(m);return;}
+    r=await sb.auth.signInWithPassword({email,password});}
+  else r=await sb.auth.signInWithPassword({email,password});
+  if(r.error){alert(r.error.message);return;}
+  if(!r.data.session){alert("Check your email to confirm your account, then sign in.");return;}
+  await setUser(r.data.user);}
+async function logout(){await sb.auth.signOut();await setUser(null);}
+
+/* ---------- browse + item page ---------- */
+async function browse(){
+  const [l,s]=await Promise.all([sb.from("listings_public").select("*").order("created_at",{ascending:false}),sb.from("seller_stats").select("*")]);
+  L=l.data||[];ST={};(s.data||[]).forEach(x=>ST[x.id]=x);setTimeout(list,0);
+  return `<input placeholder="🔍 Search items…" oninput="q=this.value;list()"><div class="chips">${["All",...Object.keys(CATS)].map(c=>`<button class="chip ${cat===c?"on":""}" onclick="cat='${c}';render()">${c}</button>`).join("")}</div><div id="list"></div>`;}
+function list(){const el=$("list");if(!el)return;const k=q.toLowerCase();
+  const a=L.filter(l=>(cat==="All"||l.category===cat)&&(l.title+l.loc+(l.descr||"")).toLowerCase().includes(k));
+  el.innerHTML=a.length?`<div class="grid">${a.map(l=>{const s=ST[l.seller_id]||{};return `<div class="card" onclick="view='${l.id}';render()"><div class="img">${EMO[l.category]||"📦"}</div><div class="cb"><div class="t">${esc(l.title)}</div><div class="p">${kes(l.price)}</div><div class="m">${esc(l.loc)} · ${esc(l.cond)}</div><div class="m">${stars(s.avg_stars,s.n_ratings)}${s.sold?` · ${s.sold} sold`:""}</div></div></div>`}).join("")}</div>`:'<div class="empty">No items yet. Check back soon.</div>';}
+async function itemView(id){
+  const l=L.find(x=>x.id===id);if(!l){view=null;return await browse();}
+  const s=ST[l.seller_id]||{};
+  const {data:rv}=await sb.from("ratings").select("stars,review,created_at").eq("seller_id",l.seller_id).order("created_at",{ascending:false}).limit(5);
+  return `<button class="chip" onclick="view=null;render()">← Back</button>
+  <div class="box"><div class="img" style="height:140px;font-size:70px;border-radius:10px">${EMO[l.category]||"📦"}</div>
+  <h2 style="margin:12px 0 2px">${esc(l.title)}</h2><div class="p" style="font-size:22px">${kes(l.price)}</div>
+  <div style="margin-top:8px"><span class="tag">${esc(l.category)}</span><span class="tag">${esc(l.cond)}</span><span class="tag">📍 ${esc(l.loc)}</span>${l.has_id?'<span class="tag ok">🔒 ID on file</span>':""}</div>
+  <p>${esc(l.descr)}</p>
+  ${P.role==="buyer"?`<button class="btn" onclick="request('${l.id}')">🙋 I'm interested</button>`:""}</div>
+  <div class="box"><b>Seller: ${esc(s.name)}${s.verified?" ✅ Verified":""}</b><div class="stat" style="font-size:20px">${stars(s.avg_stars,s.n_ratings)}</div>
+  <div class="m">${s.sold||0} items sold · Member since ${s.created_at?new Date(s.created_at).toLocaleDateString():""}</div>${mapLine(s.area,s.lat,s.lng)}
+  ${(rv||[]).map(r=>`<div class="m" style="margin-top:8px">${"⭐".repeat(r.stars)} ${esc(r.review)}</div>`).join("")}</div>
+  <div class="box"><button class="btn alt" style="margin-top:0" onclick="togg('ra_box')">🚩 Report this ad</button><div id="ra_box" style="display:none">${reportForm("ra",`reportAd('${l.id}')`)}</div><button class="btn alt" onclick="togg('rs_box')">🚩 Report this seller</button><div id="rs_box" style="display:none">${reportForm("rs",`reportSeller('${l.seller_id}')`)}</div></div>
+  <div class="box"><b>Stay safe</b><div class="tip"><a href="#" onclick="tab='spots';view=null;render();return false" style="color:var(--gr)">🛡️ See safe meeting spots</a><br>• Meet in a busy public place.<br>• Check the item before you confirm.<br>• Never send money in advance.</div></div>`;}
+async function request(id){
+  const {error}=await sb.rpc("request_item",{p_listing:id});if(error){alert(error.message);return;}
+  alert("Request sent! Track it in My Items.");tab="items";view=null;render();}
+
+/* ---------- seller: post ad, dashboard ---------- */
+async function post(){const ks=Object.keys(CATS);return `<h2>Post an item</h2>
+ <label>What are you selling?<input id="p_title"></label>
+ <div class="row"><label>Category<select id="p_cat" onchange="$('p_fee').textContent=kes(CATS[this.value])">${ks.map(c=>`<option>${c}</option>`).join("")}</select></label>
+ <label>Condition<select id="p_cond"><option>Like new</option><option selected>Good</option><option>Fair</option><option>For parts</option></select></label></div>
+ <div class="row"><label>Price (KES)<input id="p_price" type="number" inputmode="numeric"></label><label>Location<input id="p_loc"></label></div>
+ <label>IMEI / serial / plate (private, required for phones, electronics, vehicles)<input id="p_serial"></label>
+ <label>Details<textarea id="p_desc" rows="3"></textarea></label>
+ <div class="box"><div class="m">Ad fee</div><div class="fee" id="p_fee">${kes(CATS[ks[0]])}</div></div>
+ <button class="btn" onclick="savePost()">Publish ad</button>
+ <div class="tip">M-Pesa payment for the ad fee is connected in the next step. For now the fee is recorded on your ad.</div>`;}
+async function savePost(){
+  const g=i=>$(i).value.trim(),c=g("p_cat");
+  if(!g("p_title")||!g("p_price")||!g("p_loc")){alert("Fill in title, price and location.");return;}
+  if(NEEDID.includes(c)&&!g("p_serial")){alert("Add the IMEI, serial number or plate. It protects buyers.");return;}
+  const {error}=await sb.from("listings").insert({seller_id:U.id,title:g("p_title"),category:c,cond:g("p_cond"),price:+g("p_price"),loc:g("p_loc"),serial:g("p_serial")||null,descr:g("p_desc"),fee:CATS[c]});
+  if(error){alert(error.message);return;}
+  alert("Your ad is live!");tab="sales";render();}
+async function sales(){
+  const [st,ad,od]=await Promise.all([sb.from("seller_stats").select("*").eq("id",U.id).single(),
+    sb.from("listings").select("*").eq("seller_id",U.id).order("created_at",{ascending:false}),
+    sb.from("orders").select("*").eq("seller_id",U.id).order("created_at",{ascending:false})]);
+  const s=st.data||{},o=od.data||[],rated=await ratedSet(o);
+  BS={};const bid=[...new Set(o.map(x=>x.buyer_id))];if(bid.length){const {data:bs}=await sb.from("buyer_stats").select("*").in("id",bid);(bs||[]).forEach(b=>BS[b.id]=b);}
+  return `<h2>My Sales</h2><div class="box"><div class="stat">${stars(s.avg_stars,s.n_ratings)}</div>
+  <div class="m">${s.sold||0} items sold · ${o.filter(x=>x.status==="requested").length} new requests</div></div>
+  <h3>Orders</h3>${o.length?o.map(x=>orderCard(x,rated)).join(""):'<div class="empty">No requests yet.</div>'}
+  <h3>My ads</h3>${(ad.data||[]).map(l=>`<div class="box"><b>${esc(l.title)}</b> <span class="tag">${esc(l.status)}</span><div class="m">${kes(l.price)} · fee ${kes(l.fee)}</div>${l.status==="live"?`<button class="btn alt" onclick="removeAd('${l.id}')">Remove ad</button>`:""}</div>`).join("")||'<div class="empty">No ads yet.</div>'}`;}
+async function removeAd(id){if(!confirm("Remove this ad?"))return;await sb.from("listings").update({status:"removed"}).eq("id",id);render();}
+
+/* ---------- orders (both roles) ---------- */
+async function ratedSet(o){if(!o.length)return new Set();
+  const {data}=await sb.from(P.role==="seller"?"buyer_ratings":"ratings").select("order_id").in("order_id",o.map(x=>x.id));return new Set((data||[]).map(r=>r.order_id));}
+function orderCard(x,rated){
+  const sel=P.role==="seller",who=sel?x.buyer_name:x.seller_name,ph=sel?x.buyer_phone:x.seller_phone;
+  const wa=`https://wa.me/${esc(ph)}?text=${encodeURIComponent("Hi, about "+x.item_title+" on Pata Deals Hub")}`;
+  let act="";
+  if(sel&&x.status==="requested")act=`<label>Buyer's national ID number (only the last 3 digits are saved)<input id="i_${x.id}" inputmode="numeric"></label><button class="btn" onclick="markSold('${x.id}')">Mark as sold</button>`;
+  else if(!sel&&x.status==="sold")act=`<button class="btn" onclick="received('${x.id}')">✅ I received it and it is OK</button>`;
+  else if(!sel&&x.status==="received"&&!rated.has(x.id))act=`<label>Rate this seller<select id="r_${x.id}">${[5,4,3,2,1].map(n=>`<option value="${n}">${"⭐".repeat(n)}</option>`).join("")}</select></label><label>Your review (optional)<input id="v_${x.id}"></label><button class="btn" onclick="rate('${x.id}')">Submit rating</button>`;
+  else if(sel&&x.status==="received"&&!rated.has(x.id))act=`<label>Rate this buyer<select id="b_${x.id}">${[5,4,3,2,1].map(n=>`<option value="${n}">${"⭐".repeat(n)}</option>`).join("")}</select></label><label>Your review (optional)<input id="bv_${x.id}"></label><button class="btn" onclick="rateBuyer('${x.id}')">Submit rating</button>`;
+  else if(x.status==="received")act='<div class="tip">Done ✓ Sale confirmed by both sides.</div>';
+  return `<div class="box"><b>${esc(x.item_title)}</b> <span class="tag ${x.status==="received"?"ok":""}">${LABEL[x.status]}</span><div class="p">${kes(x.item_price)}</div>
+  <div class="m">${sel?"Buyer":"Seller"}: ${esc(who)}</div>${partyInfo(x,sel)}<a class="btn alt" target="_blank" rel="noopener" href="${wa}">💬 Chat on WhatsApp</a>${act}${reportBlock(x,sel)}</div>`;}
+async function items(){
+  const {data}=await sb.from("orders").select("*").eq("buyer_id",U.id).order("created_at",{ascending:false});
+  const o=data||[],rated=await ratedSet(o);
+  const sid=[...new Set(o.map(x=>x.seller_id))];if(sid.length){const {data:ss}=await sb.from("seller_stats").select("*").in("id",sid);(ss||[]).forEach(z=>ST[z.id]=z);}
+  return `<h2>My Items</h2>${o.length?o.map(x=>orderCard(x,rated)).join(""):`<div class="empty">Nothing yet. Tap "I'm interested" on an item in Browse.</div>`}`;}
+async function act(fn,args){const {error}=await sb.rpc(fn,args);if(error){alert(error.message);return;}render();}
+function markSold(id){const t=$("i_"+id).value.trim();if(t.length<5){alert("Enter the buyer's ID number.");return;}act("mark_sold",{p_order:id,p_id:t});}
+function received(id){if(confirm("Confirm you received the item and it is OK?"))act("confirm_received",{p_order:id});}
+function rate(id){act("rate_seller",{p_order:id,p_stars:+$("r_"+id).value,p_review:$("v_"+id).value.trim()});}
+
+/* ---------- location, ratings of buyers, reports ---------- */
+function mapLine(area,lat,lng){if(!area&&lat==null)return "";const q=lat!=null?lat+","+lng:encodeURIComponent(area+", Kenya");
+  return `<div class="m">📍 ${esc(area||"Shared location")} · <a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener" style="color:var(--gr)">Open in Maps</a></div>`;}
+function partyInfo(x,sel){
+  if(sel){const b=BS[x.buyer_id];return `<div class="m">${b?stars(b.avg_stars,b.n_ratings):"New buyer"}</div>`+mapLine(x.buyer_area,x.buyer_lat,x.buyer_lng);}
+  const s=ST[x.seller_id]||{};return `<div class="m">${stars(s.avg_stars,s.n_ratings)}</div>`+mapLine(s.area,s.lat,s.lng);}
+function reportForm(id,fn){return `<label>What happened?<select id="${id}_r"><option>Fraud or scam</option><option>Stolen item</option><option>Fake or wrong item</option><option>Rude or threatening</option><option>Other</option></select></label><label>Details (optional)<input id="${id}_d"></label><button class="btn" onclick="${fn}">Send report</button>`;}
+function reportBlock(x,sel){return `<button class="btn alt" onclick="togg('rp_${x.id}')">🚩 Report ${sel?"buyer":"seller"}</button><div id="rp_${x.id}" style="display:none">${reportForm("ru_"+x.id,`reportUser('${x.id}')`)}</div>`;}
+function togg(id){const e=$(id);e.style.display=e.style.display==="none"?"block":"none";}
+async function reportUser(oid){const {error}=await sb.rpc("report_user",{p_order:oid,p_reason:$("ru_"+oid+"_r").value,p_details:$("ru_"+oid+"_d").value.trim()});
+  if(error){alert(error.message);return;}alert("Report sent. We will review it.");togg("rp_"+oid);}
+async function reportAd(id){const {error}=await sb.rpc("report_listing",{p_listing:id,p_reason:$("ra_r").value,p_details:$("ra_d").value.trim()});
+  if(error){alert(error.message);return;}alert("Report sent. Thank you for keeping the market safe.");togg("ra_box");}
+function rateBuyer(id){act("rate_buyer",{p_order:id,p_stars:+$("b_"+id).value,p_review:$("bv_"+id).value.trim()});}
+async function spot(){
+  const {data}=await sb.from("profiles").select("area,lat,lng").eq("id",U.id).single();const d=data||{};SP={lat:d.lat??null,lng:d.lng??null};
+  return `<h2>My spot</h2><div class="tip">${P.role==="seller"?"Buyers see this on your ads, so they know where to find you.":"Sellers see this so you can agree where to meet."} You choose what to share. We never track your phone. Pick a public place, not your home.</div>
+  <label>Market or meeting area (for example Thika Road Mall)<input id="s_area" value="${esc(d.area||"")}"></label>
+  <button class="btn alt" onclick="gps()">📍 Use my current location</button>
+  <div class="m" id="s_pin">${d.lat!=null?"Pin saved: "+d.lat.toFixed(4)+", "+d.lng.toFixed(4):"No pin yet"}</div>
+  <button class="btn" onclick="saveSpot()">Save</button><button class="btn alt" onclick="clearPin()">Remove my pin</button>`;}
+function gps(){if(!navigator.geolocation){alert("Your browser can't share location. Just type your area.");return;}
+  navigator.geolocation.getCurrentPosition(p=>{SP={lat:p.coords.latitude,lng:p.coords.longitude};$("s_pin").textContent="Pin ready: "+SP.lat.toFixed(4)+", "+SP.lng.toFixed(4)+". Tap Save.";},
+  ()=>alert("Could not get your location. Allow location for this site in Chrome, or just type your area."),{enableHighAccuracy:true,timeout:15000});}
+function clearPin(){SP={lat:null,lng:null};$("s_pin").textContent="No pin. Tap Save to confirm.";}
+async function saveSpot(){const {error}=await sb.rpc("set_location",{p_area:$("s_area").value.trim(),p_lat:SP.lat,p_lng:SP.lng});
+  if(error){alert(error.message);return;}alert("Saved!");}
+
+/* ---------- safe spots, stolen reports, admin ---------- */
+async function reportSeller(id){const {error}=await sb.rpc("report_seller",{p_seller:id,p_reason:$("rs_r").value,p_details:$("rs_d").value.trim()});
+  if(error){alert(error.message);return;}alert("Report sent. We will review it.");togg("rs_box");}
+async function reportStolen(){const {error}=await sb.rpc("report_stolen",{p_serial:$("st_s").value.trim(),p_details:$("st_d").value.trim()});
+  if(error){alert(error.message);return;}alert("Reported. Ads with this number are now hidden while we check.");$("st_s").value="";$("st_d").value="";}
+async function spots(){const {data}=await sb.from("safe_spots").select("*").order("kind").order("name");SPL=data||[];setTimeout(spotList,0);
+  return `<h2>🛡️ Safe meeting spots</h2><div class="tip">Meet in a busy public place with security. Never at someone's home. Tell a friend where you are going.</div><input placeholder="🔍 Search by area or name" oninput="SQ=this.value;spotList()"><div id="sl"></div>`;}
+function spotList(){const el=$("sl");if(!el)return;const k=SQ.toLowerCase();
+  const a=SPL.filter(x=>(x.name+" "+(x.area||"")+" "+x.kind).toLowerCase().includes(k));const kinds=[...new Set(a.map(x=>x.kind))];
+  el.innerHTML=a.length?kinds.map(kd=>`<h3>${esc(kd)}</h3>`+a.filter(x=>x.kind===kd).map(x=>`<div class="box"><b>${esc(x.name)}</b><div class="m">${esc(x.area||"")}</div><a class="btn alt" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.name+", "+(x.area||"")+", Kenya")}">📍 Open in Maps</a></div>`).join("")).join(""):'<div class="empty">No spots found. Try another area.</div>';}
+async function adm(fn,args){const {error}=await sb.rpc(fn,args);if(error){alert(error.message);return;}render();}
+async function admGet(fn){const {data,error}=await sb.rpc(fn);return error?{err:error.message}:{rows:data||[]};}
+async function admin(){
+  const T=[["reports","Reports"],["stolen","Stolen"],["ads","Ads"],["users","Users"],["sp","Spots"]];
+  const head=`<h2>Admin</h2><div class="chips">${T.map(t=>`<button class="chip ${ADM===t[0]?"on":""}" onclick="ADM='${t[0]}';render()">${t[1]}</button>`).join("")}</div>`;
+  return head+await ({reports:admReports,stolen:admStolen,ads:admAds,users:admUsers,sp:admSpots}[ADM])();}
+async function admReports(){const r=await admGet("admin_reports");if(r.err)return `<div class="box">${esc(r.err)}</div>`;
+  return r.rows.length?r.rows.map(x=>`<div class="box"><b>${esc(x.reason)}</b> <span class="tag">${esc(new Date(x.created_at).toLocaleDateString())}</span>
+  <div class="m">By ${esc(x.reporter)}${x.reported?" · Against: "+esc(x.reported):""}${x.ad_title?" · Ad: "+esc(x.ad_title)+" ("+esc(x.ad_status)+")":""}</div><div class="m">${esc(x.details)}</div>
+  ${x.listing_id?(x.ad_status==="live"?`<button class="btn alt" onclick="adm('admin_set_listing',{p_id:'${x.listing_id}',p_status:'removed'})">Hide ad</button>`:`<button class="btn alt" onclick="adm('admin_set_listing',{p_id:'${x.listing_id}',p_status:'live'})">Restore ad</button>`):""}
+  ${x.reported_user?`<button class="btn alt" onclick="adm('admin_suspend',{p_user:'${x.reported_user}',p_on:true})">Suspend user</button>`:""}
+  <button class="btn" onclick="adm('admin_resolve',{p_id:'${x.id}',p_status:'resolved'})">Mark reviewed</button><button class="btn alt" onclick="adm('admin_resolve',{p_id:'${x.id}',p_status:'dismissed'})">Dismiss</button></div>`).join(""):'<div class="empty">No open reports 🎉</div>';}
+async function admStolen(){const r=await admGet("admin_stolen");if(r.err)return `<div class="box">${esc(r.err)}</div>`;
+  return r.rows.length?r.rows.map(x=>`<div class="box"><b>${esc(x.serial)}</b> <span class="tag">${esc(new Date(x.created_at).toLocaleDateString())}</span><div class="m">Reported by ${esc(x.reporter)}</div><div class="m">${esc(x.details)}</div>
+  <button class="btn" onclick="adm('admin_stolen_set',{p_id:'${x.id}',p_status:'confirmed'})">Confirm stolen</button><button class="btn alt" onclick="adm('admin_stolen_set',{p_id:'${x.id}',p_status:'dismissed'})">Dismiss (show ads again)</button></div>`).join(""):'<div class="empty">No stolen reports waiting 🎉</div>';}
+async function admAds(){const r=await admGet("admin_ads");if(r.err)return `<div class="box">${esc(r.err)}</div>`;
+  return r.rows.map(x=>`<div class="box"><b>${esc(x.title)}</b> <span class="tag">${esc(x.status)}</span><div class="m">${kes(x.price)} · ${esc(x.category)} · Seller: ${esc(x.seller)} · Fee ${kes(x.fee||0)}</div>
+  ${x.status==="live"?`<button class="btn alt" onclick="adm('admin_set_listing',{p_id:'${x.id}',p_status:'removed'})">Hide</button>`:x.status==="removed"?`<button class="btn alt" onclick="adm('admin_set_listing',{p_id:'${x.id}',p_status:'live'})">Restore</button>`:""}</div>`).join("")||'<div class="empty">No ads yet.</div>';}
+async function admUsers(){const r=await admGet("admin_users");if(r.err)return `<div class="box">${esc(r.err)}</div>`;
+  return r.rows.map(x=>`<div class="box"><b>${esc(x.name)}</b> <span class="tag">${esc(x.role)}</span>${x.verified?'<span class="tag ok">Verified</span>':""}${x.suspended?'<span class="tag">Suspended</span>':""}<div class="m">${esc(x.phone)}</div>
+  ${x.role==="seller"?`<button class="btn alt" onclick="adm('admin_verify',{p_user:'${x.id}',p_on:${!x.verified}})">${x.verified?"Remove verified badge":"✅ Verify seller"}</button>`:""}
+  <button class="btn alt" onclick="adm('admin_suspend',{p_user:'${x.id}',p_on:${!x.suspended}})">${x.suspended?"Unsuspend":"Suspend account"}</button></div>`).join("")||'<div class="empty">No users.</div>';}
+async function admSpots(){const r=await admGet("admin_spots");if(r.err)return `<div class="box">${esc(r.err)}</div>`;
+  return `<div class="box"><b>Add a safe spot</b><label>Name<input id="sp_n"></label><label>Type<select id="sp_k"><option>Mall</option><option>Police station</option><option>School</option><option>Other</option></select></label><label>Area<input id="sp_a"></label><button class="btn" onclick="addSpot()">Add</button></div>`+
+  r.rows.map(x=>`<div class="box"><b>${esc(x.name)}</b> <span class="tag">${esc(x.kind)}</span>${x.active?"":'<span class="tag">Hidden</span>'}<div class="m">${esc(x.area||"")}</div><button class="btn alt" onclick="adm('admin_set_spot',{p_id:'${x.id}',p_active:${!x.active}})">${x.active?"Remove":"Restore"}</button></div>`).join("");}
+function addSpot(){const n=$("sp_n").value.trim();if(!n){alert("Enter a name.");return;}adm("admin_add_spot",{p_name:n,p_kind:$("sp_k").value,p_area:$("sp_a").value.trim()});}
+
+/* ---------- check an item ---------- */
+async function check(){return `<h2>Check an item</h2><div class="tip">Buying a used phone? Type its IMEI, serial or plate to see if it was sold on Pata Deals Hub before.</div>
+ <label>IMEI / serial / plate<input id="c_in"></label><button class="btn" onclick="doCheck()">Check</button><div id="c_out"></div><div class="box"><b>🚩 Report a stolen item</b><div class="tip">If your phone, laptop or another item was stolen, add its IMEI or serial number. Matching ads are hidden straight away while we check.</div><label>IMEI / serial / plate<input id="st_s"></label><label>What happened? (optional)<input id="st_d"></label><button class="btn" onclick="reportStolen()">Report stolen item</button></div>`;}
+async function doCheck(){
+  const v=$("c_in").value.trim();if(!v)return;
+  const {data,error}=await sb.rpc("check_serial",{p_serial:v}),o=$("c_out");
+  if(error){o.innerHTML=`<div class="box">${esc(error.message)}</div>`;return;}
+  if(data.stolen){o.innerHTML='<div class="box"><div class="fee">⚠️ REPORTED STOLEN. Do not buy.</div></div>';return;}
+  o.innerHTML=data.sales?`<div class="box"><span class="tag ok">Record found</span><div class="m">Sold ${data.sales} time(s). Last sale: ${new Date(data.last).toLocaleDateString()}.</div></div>`
+   :`<div class="box">No record on Pata Deals Hub. That does not prove it is safe. Ask the seller for proof of purchase.</div>`;}
+init();
+</script>
+</body>
+</html>
